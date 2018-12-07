@@ -1153,7 +1153,7 @@ class ZappaCLI(object):
         for event in events:
             self.collision_warning(event.get('function'))
 
-        if self.stage_config.get('keep_warm', True):
+        if self.stage_config.get('keep_warm', 1) > 0:
             if not events:
                 events = []
 
@@ -2402,6 +2402,14 @@ class ZappaCLI(object):
             authorizer_function = self.authorizer.get('function', None)
             if authorizer_function:
                 settings_s += "AUTHORIZER_FUNCTION='{0!s}'\n".format(authorizer_function)
+
+            # Keep Warm Setting Needed by Handler
+            keep_warm = self.stage_config.get('keep_warm', 1)
+            if keep_warm > 0:
+                # Handle legacy configs with boolean values:
+                kw_val = 1 if keep_warm is True else keep_warm
+
+                settings_s += "WARM_LAMBDA_COUNT={0:d}\n".format(kw_val)
 
             # Copy our Django app into root of our package.
             # It doesn't work otherwise.
