@@ -15,6 +15,8 @@ import tarfile
 
 from builtins import str
 from werkzeug.wrappers import Response
+from aws_xray_sdk.core import xray_recorder
+from os import environ
 
 # This file may be copied into a project's root,
 # so handle both scenarios.
@@ -347,6 +349,10 @@ class LambdaHandler(object):
         that back to the API Gateway.
 
         """
+
+        if os.environ.get('AWS_EXECUTION_ENV', '').startswith('AWS_Lambda_'):
+            xray_recorder.begin_subsegment("pre_handle")
+
         settings = self.settings
 
         # If in DEBUG mode, log all raw incoming events.
@@ -514,8 +520,14 @@ class LambdaHandler(object):
                 environ['lambda.context'] = context
                 environ['lambda.event'] = event
 
+                if os.environ.get('AWS_EXECUTION_ENV', '').startswith('AWS_Lambda_'):
+                    xray_recorder.end_subsegment()
+
                 # Execute the application
                 response = Response.from_app(self.wsgi_app, environ)
+
+                if os.environ.get('AWS_EXECUTION_ENV', '').startswith('AWS_Lambda_'):
+                    xray_recorder.begin_subsegment("post_handle")
 
                 # This is the object we're going to return.
                 # Pack the WSGI response into our special dictionary.
@@ -544,6 +556,9 @@ class LambdaHandler(object):
                 response_time_ms = delta.total_seconds() * 1000
                 response.content = response.data
                 common_log(environ, response, response_time=response_time_ms)
+
+                if os.environ.get('AWS_EXECUTION_ENV', '').startswith('AWS_Lambda_'):
+                    xray_recorder.end_subsegment()
 
                 return zappa_returndict
         except Exception as e:  # pragma: no cover
