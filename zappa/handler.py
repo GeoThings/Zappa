@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+from __future__ import unicode_literals, print_function
 
 import base64
 import boto3
@@ -602,7 +602,7 @@ def lambda_handler(event, context):  # pragma: no cover
 def keep_warm_callback(event=None, context=None):
     """
     Method is triggered by the CloudWatch event scheduled when keep_warm setting is set 1 or more.
-     
+
     The initializers should sleep as little as possible. It takes roughly 15ms to invoke lambda from lambda. And
     with 20 workers we can dynamically determine the minimal amount of time to sleep so that our keep_warms always
     start cold lambdas but not get in the way of genuine traffic that we want to use the newly warmed lambdas.
@@ -614,13 +614,14 @@ def keep_warm_callback(event=None, context=None):
 
     max_thread_pool_size = 20
     milliseconds_per_invocation = 15.0  # Average lambda invocation time
-    minimum_sleep_ms = 1000  # Minimum sleep of 1 second.
+    minimum_sleep_ms = 100  # Minimum sleep of 100 ms.
     thread_pool_size = min([max_thread_pool_size, warm_coount])  # Threads per warm, or 20 max
 
     invocations_per_worker = float(warm_coount) / float(thread_pool_size)
     optimal_sleep = max([invocations_per_worker * milliseconds_per_invocation, minimum_sleep_ms]) / 1000.0
 
     pool = ThreadPool(thread_pool_size)
+    print("Keep warm spawn({}): pool_size={}".format(warm_coount, thread_pool_size))
     mp = pool.map_async(func=keep_warm_lambda_initializer,
                         iterable=[optimal_sleep for _ in range(warm_coount)])
 
@@ -634,6 +635,7 @@ def keep_warm_callback(event=None, context=None):
 
 @task
 def keep_warm_lambda_initializer(event=None, context=None):
+    print("Keep warm: {}".format(event))
     lambda_handler(event={}, context=context)  # overriding event with an empty one so that web app initialization will
     # be triggered.
     time.sleep(event)  # Sleeping so this lambda stays busy and subsequent calls cold-start new lambdas
