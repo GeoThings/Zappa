@@ -26,13 +26,12 @@ try:
     from zappa.middleware import ZappaWSGIMiddleware
     from zappa.wsgi import create_wsgi_request, common_log
     from zappa.utilities import parse_s3_url
-    from zappa.async import task
+    from zappa.async import task_sns
 except ImportError as e:  # pragma: no cover
     from .middleware import ZappaWSGIMiddleware
     from .wsgi import create_wsgi_request, common_log
     from .utilities import parse_s3_url
-    from .async import task
-
+    from .async import task_sns
 
 # Set up logging
 logging.basicConfig()
@@ -106,7 +105,6 @@ class LambdaHandler(object):
             project_archive_path = getattr(self.settings, 'ARCHIVE_PATH', None)
             if project_archive_path:
                 self.load_remote_project_archive(project_archive_path)
-
 
             # Load compliled library to the PythonPath
             # checks if we are the slim_handler since this is not needed otherwise
@@ -612,10 +610,10 @@ def keep_warm_callback(event=None, context=None):
     settings = importlib.import_module('zappa_settings')
     warm_coount = settings.WARM_LAMBDA_COUNT
 
-    max_thread_pool_size = 20
-    milliseconds_per_invocation = 15.0  # Average lambda invocation time
+    max_thread_pool_size = 64
+    milliseconds_per_invocation = 10.0  # Average lambda invocation time
     minimum_sleep_ms = 100  # Minimum sleep of 100 ms.
-    thread_pool_size = min([max_thread_pool_size, warm_coount])  # Threads per warm, or 20 max
+    thread_pool_size = min([max_thread_pool_size, warm_coount])  # Threads per warm, or 64 max
 
     invocations_per_worker = float(warm_coount) / float(thread_pool_size)
     optimal_sleep = max([invocations_per_worker * milliseconds_per_invocation, minimum_sleep_ms]) / 1000.0
@@ -633,7 +631,7 @@ def keep_warm_callback(event=None, context=None):
         print("keep warm pool exception", ex)
 
 
-@task
+@task_sns
 def keep_warm_lambda_initializer(event=None, context=None):
     print("Keep warm: {}".format(event))
     lambda_handler(event={}, context=context)  # overriding event with an empty one so that web app initialization will
