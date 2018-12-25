@@ -633,7 +633,6 @@ def keep_warm_callback(event=None, context=None):
 
 @task_sns
 def keep_warm_lambda_initializer(event=None, context=None):
-    print("Keep warm: {}".format(event))
     lambda_handler(event={}, context=context)  # overriding event with an empty one so that web app initialization will
     # be triggered.
     time.sleep(event)  # Sleeping so this lambda stays busy and subsequent calls cold-start new lambdas
