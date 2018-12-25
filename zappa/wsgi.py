@@ -164,7 +164,7 @@ def common_log(environ, response, response_time=None):
 
     """
 
-    logger = logging.getLogger()
+    logger = logging.getLogger(__name__)
 
     if response_time:
         formatter = ApacheFormatter(with_response_time=True)
