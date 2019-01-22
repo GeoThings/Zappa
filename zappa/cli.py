@@ -2422,6 +2422,12 @@ class ZappaCLI(object):
             async_response_table = self.stage_config.get('async_response_table', '')
             settings_s += "ASYNC_RESPONSE_TABLE='{0!s}'\n".format(async_response_table)
 
+            # lift max pool connections limit of botocore
+            # from default 10(botocore default limit) if needed
+            max_pool_connections = self.stage_config.get('max_pool_connections', 10)
+            if max_pool_connections > 0:
+                settings_s += "MAX_POOL_CONNECTIONS={0:d}\n".format(max_pool_connections)
+
             # Lambda requires a specific chmod
             temp_settings = tempfile.NamedTemporaryFile(delete=False)
             os.chmod(temp_settings.name, 0o644)

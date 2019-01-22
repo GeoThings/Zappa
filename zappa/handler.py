@@ -607,6 +607,7 @@ def keep_warm_callback(event=None, context=None):
     # Get the desired warm count out of the settings file.
     settings = importlib.import_module('zappa_settings')
     warm_coount = settings.WARM_LAMBDA_COUNT
+    max_pool_connections = settings.MAX_POOL_CONNECTIONS
 
     max_thread_pool_size = 64
     milliseconds_per_invocation = 10.0  # Average lambda invocation time
@@ -617,7 +618,7 @@ def keep_warm_callback(event=None, context=None):
     optimal_sleep = max([invocations_per_worker * milliseconds_per_invocation, minimum_sleep_ms]) / 1000.0
 
     pool = ThreadPool(thread_pool_size)
-    print("Keep warm spawn({}): pool_size={}".format(warm_coount, thread_pool_size))
+    print("Keep warm spawn({}): pool_size={}, max_pool_connections={}".format(warm_coount, thread_pool_size, max_pool_connections))
     mp = pool.map_async(func=keep_warm_lambda_initializer,
                         iterable=[optimal_sleep for _ in range(warm_coount)])
 
