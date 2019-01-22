@@ -104,11 +104,12 @@ except ImportError:
 
 # Declare these here so they're kept warm.
 try:
+    config = Config(max_pool_connections=32)
     aws_session = boto3.Session()
-    LAMBDA_CLIENT = aws_session.client('lambda')
-    SNS_CLIENT = aws_session.client('sns')
-    STS_CLIENT = aws_session.client('sts')
-    DYNAMODB_CLIENT = aws_session.client('dynamodb')
+    LAMBDA_CLIENT = aws_session.client('lambda', config=config)
+    SNS_CLIENT = aws_session.client('sns', config=config)
+    STS_CLIENT = aws_session.client('sts', config=config)
+    DYNAMODB_CLIENT = aws_session.client('dynamodb', config=config)
 except botocore.exceptions.NoRegionError as e: # pragma: no cover
     # This can happen while testing on Travis, but it's taken care  of
     # during class initialization.
