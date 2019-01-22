@@ -106,11 +106,11 @@ except ImportError:
 try:
     from zappa_settings import MAX_POOL_CONNECTIONS
 except ImportError:
-    MAX_POOL_CONNECTIONS = 32
+    MAX_POOL_CONNECTIONS = 10
 
 # Declare these here so they're kept warm.
 try:
-    config = Config(max_pool_connections=32)
+    config = Config(max_pool_connections=MAX_POOL_CONNECTIONS)
     aws_session = boto3.Session()
     LAMBDA_CLIENT = aws_session.client('lambda', config=config)
     SNS_CLIENT = aws_session.client('sns', config=config)
