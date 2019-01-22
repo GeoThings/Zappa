@@ -611,7 +611,7 @@ def keep_warm_callback(event=None, context=None):
 
     max_thread_pool_size = 64
     milliseconds_per_invocation = 10.0  # Average lambda invocation time
-    minimum_sleep_ms = 175  # Minimum sleep of 100 ms.
+    minimum_sleep_ms = 375  # Minimum sleep of 100 ms.
     thread_pool_size = min([max_thread_pool_size, warm_coount])  # Threads per warm, or 64 max
 
     invocations_per_worker = float(warm_coount) / float(thread_pool_size)
