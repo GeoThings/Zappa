@@ -26,12 +26,12 @@ try:
     from zappa.middleware import ZappaWSGIMiddleware
     from zappa.wsgi import create_wsgi_request, common_log
     from zappa.utilities import parse_s3_url
-    from zappa.async import task_sns
+    from zappa.async import task
 except ImportError as e:  # pragma: no cover
     from .middleware import ZappaWSGIMiddleware
     from .wsgi import create_wsgi_request, common_log
     from .utilities import parse_s3_url
-    from .async import task_sns
+    from .async import task
 
 # Set up logging
 logging.basicConfig()
@@ -607,21 +607,24 @@ def keep_warm_callback(event=None, context=None):
 
     # Get the desired warm count out of the settings file.
     settings = importlib.import_module('zappa_settings')
-    warm_coount = settings.WARM_LAMBDA_COUNT
-    max_pool_connections = settings.MAX_POOL_CONNECTIONS
 
-    max_thread_pool_size = 64
-    milliseconds_per_invocation = 10.0  # Average lambda invocation time
-    minimum_sleep_ms = 375  # Minimum sleep of 100 ms.
-    thread_pool_size = min([max_thread_pool_size, warm_coount])  # Threads per warm, or 64 max
+    # max thread pool size of boto3 clients (async.py:113)
+    max_thread_pool_size = settings.MAX_POOL_CONNECTIONS
+    warm_count = settings.WARM_LAMBDA_COUNT
+    thread_pool_size = min([max_thread_pool_size, warm_count])
 
-    invocations_per_worker = float(warm_coount) / float(thread_pool_size)
-    optimal_sleep = max([invocations_per_worker * milliseconds_per_invocation, minimum_sleep_ms]) / 1000.0
+    # deriving sleep durations
+    minimum_sleep_ms = settings.WARM_MINIMUM_SLEEP_MS
+    milliseconds_per_invocation = settings.WARM_INVOCATION_COST_MS
+    milliseconds_per_task_dispatch = settings.WARM_TASK_DISPATCH_COST_MS
+
+    invocations_per_worker = float(warm_count) / float(thread_pool_size)
+    optimal_sleep = max([invocations_per_worker * milliseconds_per_invocation + warm_count * milliseconds_per_task_dispatch, minimum_sleep_ms]) / 1000.0
 
     pool = ThreadPool(thread_pool_size)
-    print("Keep warm spawn({}): pool_size={}, max_pool_connections={}".format(warm_coount, thread_pool_size, max_pool_connections))
+    print("Keep warm spawn({}): pool_size={}, max_pool_connections={}".format(warm_count, thread_pool_size, max_thread_pool_size))
     mp = pool.map_async(func=keep_warm_lambda_initializer,
-                        iterable=[optimal_sleep for _ in range(warm_coount)])
+                        iterable=[optimal_sleep for _ in range(warm_count)])
 
     pool.close()
     pool.join()
@@ -631,7 +634,7 @@ def keep_warm_callback(event=None, context=None):
         print("keep warm pool exception", ex)
 
 
-@task_sns
+@task
 def keep_warm_lambda_initializer(event=None, context=None):
     lambda_handler(event={}, context=context)  # overriding event with an empty one so that web app initialization will
     # be triggered.

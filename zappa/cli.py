@@ -2411,6 +2411,18 @@ class ZappaCLI(object):
 
                 settings_s += "WARM_LAMBDA_COUNT={0:d}\n".format(kw_val)
 
+            warm_minimum_sleep_ms = self.stage_config.get('warm_minimum_sleep_ms', 100)
+            if warm_minimum_sleep_ms > 0:
+                settings_s += "WARM_MINIMUM_SLEEP_MS={0:d}\n".format(warm_minimum_sleep_ms)
+
+            warm_invocation_cost_ms = self.stage_config.get('warm_invocation_cost_ms', 20)
+            if warm_invocation_cost_ms > 0:
+                settings_s += "WARM_INVOCATION_COST_MS={0:d}\n".format(warm_invocation_cost_ms)
+
+            warm_task_dispatch_cost_ms = self.stage_config.get('warm_task_dispatch_cost_ms', 5)
+            if warm_invocation_cost_ms > 0:
+                settings_s += "WARM_TASK_DISPATCH_COST_MS={0:d}\n".format(warm_task_dispatch_cost_ms)
+
             # Copy our Django app into root of our package.
             # It doesn't work otherwise.
             if self.django_settings:

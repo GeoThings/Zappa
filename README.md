@@ -931,6 +931,9 @@ to change Zappa's behavior. Use these at your own risk!
             "SubnetIds": [ "subnet-12345678" ], // Note: not all availability zones support Lambda!
             "SecurityGroupIds": [ "sg-12345678" ]
         },
+        "warm_minimum_sleep_ms": 100, // Minimal sleep time keep-warm lambda function will sleep
+        "warm_invocation_cost_ms": 20, // Duration of each lambda invocation(including dwell time)
+        "warm_task_dispatch_cost_ms": 5, // Asynch Task dispatch associated time cost(average time it takes to send a single lambda/sns event before lambda invocation request gets queued by lambda service queue(dwell time)), this cost will be multiplied by num of keep_warm
         "xray_tracing": false // Optional, enable AWS X-Ray tracing on your lambda function.
     }
 }
