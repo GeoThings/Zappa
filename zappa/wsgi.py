@@ -33,7 +33,8 @@ def create_wsgi_request(event_info,
                         trailing_slash=True,
                         binary_support=False,
                         base_path=None,
-                        context_header_mappings={}
+                        context_header_mappings={},
+                        should_transform_to_iso_8859_1=True
                         ):
         """
         Given some event_info via API Gateway,
@@ -108,11 +109,13 @@ def create_wsgi_request(event_info,
             remote_addr = '127.0.0.1'
 
         environ = {
-            'PATH_INFO': get_wsgi_string(path),
-            'QUERY_STRING': get_wsgi_string(query_string),
+            'PATH_INFO': get_wsgi_string(path) if should_transform_to_iso_8859_1 else path,
+            'QUERY_STRING': get_wsgi_string(query_string) if should_transform_to_iso_8859_1 else query_string,
             'REMOTE_ADDR': remote_addr,
             'REQUEST_METHOD': method,
-            'SCRIPT_NAME': get_wsgi_string(str(script_name)) if script_name else '',
+            'SCRIPT_NAME':
+                get_wsgi_string(str(script_name)) if should_transform_to_iso_8859_1 else str(script_name)
+                if script_name else '',
             'SERVER_NAME': str(server_name),
             'SERVER_PORT': headers.get('X-Forwarded-Port', '80'),
             'SERVER_PROTOCOL': str('HTTP/1.1'),
@@ -165,7 +168,6 @@ def common_log(environ, response, response_time=None):
     """
 
     logger = logging.getLogger(__name__)
-
     if response_time:
         formatter = ApacheFormatter(with_response_time=True)
         try:
