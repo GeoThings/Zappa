@@ -622,7 +622,7 @@ def keep_warm_callback(event=None, context=None):
     optimal_sleep = max([invocations_per_worker * milliseconds_per_invocation + warm_count * milliseconds_per_task_dispatch, minimum_sleep_ms]) / 1000.0
 
     pool = ThreadPool(thread_pool_size)
-    print("Keep warm spawn({}, sleep_ms={}): pool_size={}, max_pool_connections={}".format(optimal_sleep * 1000, warm_count, thread_pool_size, max_thread_pool_size))
+    print("Keep warm spawn({}, sleep_ms={}): pool_size={}, max_pool_connections={}".format(warm_count, optimal_sleep * 1000, thread_pool_size, max_thread_pool_size))
     mp = pool.map_async(func=keep_warm_lambda_initializer,
                         iterable=[optimal_sleep for _ in range(warm_count)])
 
