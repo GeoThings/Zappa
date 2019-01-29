@@ -1209,6 +1209,14 @@ class ZappaCLI(object):
                             fg='red'
                         ))
 
+        # Enable ALB trigger
+        target_group_arn = self.stage_config.get("elb_target_group_arn", None)
+        if target_group_arn:
+            self.zappa.enable_alb(
+                lambda_arn=self.lambda_arn,
+                lambda_name=self.lambda_name,
+                target_group_arn=target_group_arn)
+
     def unschedule(self):
         """
         Given a a list of scheduled functions,

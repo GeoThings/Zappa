@@ -2370,6 +2370,18 @@ class Zappa(object):
 
         return permission_response
 
+    def enable_alb(self, lambda_arn, lambda_name, target_group_arn):
+        """
+        Given a Lambda ARN, ALB target group ARN,
+        add a permission to invoke a lambda function from ALB target group and create ALB event source
+        """
+
+        permission_response = self.create_event_permission(
+            lambda_name=lambda_name,
+            principal='elasticloadbalancing.amazonaws.com',
+            source_arn=target_group_arn)
+        print("ALB permission: {}".format(permission_response))
+
     def schedule_events(self, lambda_arn, lambda_name, events, default=True):
         """
         Given a Lambda ARN, name and a list of events, schedule this as CloudWatch Events.
