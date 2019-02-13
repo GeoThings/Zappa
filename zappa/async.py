@@ -95,6 +95,7 @@ import json
 import os
 import uuid
 import time
+import thread
 
 from .utilities import get_topic_name
 
@@ -431,7 +432,7 @@ def task(*args, **kwargs):
                                                      capture_response=capture_response).send(task_path, args, kwargs)
                 return send_result
             else:
-                return func(*args, **kwargs)
+                return thread.start_new_thread(func, args, kwargs)
 
         update_wrapper(_run_async, func)
 
