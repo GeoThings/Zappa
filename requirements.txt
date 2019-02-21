@@ -22,4 +22,3 @@ troposphere>=1.9.0
 Werkzeug>=0.14
 wheel>=0.30.0
 wsgi-request-logger==0.4.6
-git+git://github.com/GeoThings/aws-xray-sdk-python.git@master#egg=aws-xray-sdk
