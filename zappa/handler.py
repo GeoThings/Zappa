@@ -572,6 +572,10 @@ class LambdaHandler(object):
                 for key, value in response.headers:
                     zappa_returndict['headers'][key] = value
 
+                zappa_returndict['multiValueHeaders'] = {}
+                for key, value in response.headers:
+                    zappa_returndict['multiValueHeaders'][key] = [value]
+
                 # Calculate the total response time,
                 # and log it in the Common Log format.
                 time_end = datetime.datetime.now()
