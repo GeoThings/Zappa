@@ -357,6 +357,9 @@ class LambdaHandler(object):
 
         settings = self.settings
 
+        if 'multiValueHeaders' in event:
+            event['headers'] = dict([(key, value[-1]) for (key, value) in event.get('multiValueHeaders').items()])
+
         # If in DEBUG mode, log all raw incoming events.
         if settings.DEBUG:
             logger.debug('Zappa Event: {}'.format(event))
