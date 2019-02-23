@@ -42,7 +42,7 @@ def create_wsgi_request(event_info,
         """
         method = event_info['httpMethod']
         params = event_info['pathParameters']
-        query = event_info['multiValueQueryStringParameters'] if 'multiValueQueryStringParameters' in event_info else event_info['queryStringParameters']
+        query = (event_info['multiValueQueryStringParameters'] or {}) if 'multiValueQueryStringParameters' in event_info else event_info['queryStringParameters']
         headers = event_info['headers'] or {} # Allow for the AGW console 'Test' button to work (Pull #735)
 
         if context_header_mappings:
