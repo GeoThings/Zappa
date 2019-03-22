@@ -2331,12 +2331,15 @@ class Zappa(object):
             if policy_response['ResponseMetadata']['HTTPStatusCode'] == 200:
                 statement = json.loads(policy_response['Policy'])['Statement']
                 for s in statement:
-                    delete_response = self.lambda_client.remove_permission(
-                        FunctionName=lambda_name,
-                        StatementId=s['Sid']
-                    )
-                    if delete_response['ResponseMetadata']['HTTPStatusCode'] != 204:
-                        logger.error('Failed to delete an obsolete policy statement: {}'.format())
+                    if 'Principal' in s and 'Service' in s['Principal'] \
+                            and s['Principal']['Service'] == 'events.amazonaws.com' \
+                            and s["Action"] == "lambda:InvokeFunction":
+                        delete_response = self.lambda_client.remove_permission(
+                            FunctionName=lambda_name,
+                            StatementId=s['Sid']
+                        )
+                        if delete_response['ResponseMetadata']['HTTPStatusCode'] != 204:
+                            logger.error('Failed to delete an obsolete policy statement: {}'.format(s['Sid']))
             else:
                 logger.debug('Failed to load Lambda function policy: {}'.format(policy_response))
         except ClientError as e:
@@ -2379,29 +2382,40 @@ class Zappa(object):
         policy_response = self.lambda_client.get_policy(
             FunctionName=lambda_name
         )
+
+        alb_permission_already_exists = False
         if policy_response['ResponseMetadata']['HTTPStatusCode'] == 200:
             statement = json.loads(policy_response['Policy'])['Statement']
             for s in statement:
                 if 'Principal' in s and 'Service' in s['Principal'] \
                         and s['Principal']['Service'] == 'elasticloadbalancing.amazonaws.com' \
-                        and s["Action"] == "lambda:InvokeFunction":
+                        and s["Action"] == "lambda:InvokeFunction"\
+                        and 'Condition' in s and 'ArnLike' in s["Condition"] and 'AWS:SourceArn' in s["Condition"]["ArnLike"]:
 
-                    delete_response = self.lambda_client.remove_permission(
-                        FunctionName=lambda_name,
-                        StatementId=s['Sid']
-                    )
-                    if delete_response['ResponseMetadata']['HTTPStatusCode'] != 204:
-                        logger.error('Failed to delete an obsolete policy statement: {}'.format(s['Sid']))
+                    if s["Condition"]["ArnLike"]["AWS:SourceArn"] == target_group_arn:
+                        alb_permission_already_exists = True
                     else:
-                        print("Removed old ALB policy: {}".format(s['Sid']))
+                        old_arn = s["Condition"]["ArnLike"]["AWS:SourceArn"]
+                        delete_response = self.lambda_client.remove_permission(
+                            FunctionName=lambda_name,
+                            StatementId=s['Sid']
+                        )
+                        if delete_response['ResponseMetadata']['HTTPStatusCode'] != 204:
+                            logger.error('Failed to delete an obsolete policy statement: {}'.format(s['Sid']))
+                        else:
+                            print("Removed old ALB policy({}): {}".format(s['Sid'], old_arn))
+
         else:
             logger.debug('Failed to load Lambda function policy: {}'.format(policy_response))
 
-        permission_response = self.create_event_permission(
-            lambda_name=lambda_name,
-            principal='elasticloadbalancing.amazonaws.com',
-            source_arn=target_group_arn)
-        print("Added ALB policy: {}".format(permission_response))
+        if not alb_permission_already_exists:
+            permission_response = self.create_event_permission(
+                lambda_name=lambda_name,
+                principal='elasticloadbalancing.amazonaws.com',
+                source_arn=target_group_arn)
+            print("Added ALB policy: {}".format(permission_response))
+        else:
+            print("ALB policy already present")
 
     def schedule_events(self, lambda_arn, lambda_name, events, default=True):
         """
