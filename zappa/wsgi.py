@@ -15,7 +15,7 @@ if sys.version_info[0] < 3:
 else:
     from urllib.parse import urlencode
 
-from .utilities import titlecase_keys
+from .utilities import merge_headers, titlecase_keys
 
 BINARY_METHODS = [
                     "POST",
@@ -34,16 +34,31 @@ def create_wsgi_request(event_info,
                         binary_support=False,
                         base_path=None,
                         context_header_mappings={},
-                        should_transform_to_iso_8859_1=True
                         ):
         """
         Given some event_info via API Gateway,
         create and return a valid WSGI request environ.
         """
         method = event_info['httpMethod']
-        params = event_info['pathParameters']
-        query = (event_info['multiValueQueryStringParameters'] or {}) if 'multiValueQueryStringParameters' in event_info else event_info['queryStringParameters']
-        headers = event_info['headers'] or {} # Allow for the AGW console 'Test' button to work (Pull #735)
+        headers = merge_headers(event_info) or {} # Allow for the AGW console 'Test' button to work (Pull #735)
+
+        """
+        API Gateway and ALB both started allowing for multi-value querystring
+        params in Nov. 2018. If there aren't multi-value params present, then
+        it acts identically to 'queryStringParameters', so we can use it as a
+        drop-in replacement.
+
+        The one caveat here is that ALB will only include _one_ of
+        queryStringParameters _or_ multiValueQueryStringParameters, which means
+        we have to check for the existence of one and then fall back to the
+        other.
+        """
+        if 'multiValueQueryStringParameters' in event_info:
+            query = event_info['multiValueQueryStringParameters']
+            query_string = urlencode(query, doseq=True) if query else ''
+        else:
+            query = event_info.get('queryStringParameters', {})
+            query_string = urlencode(query) if query else ''
 
         if context_header_mappings:
             for key, value in context_header_mappings.items():
@@ -95,11 +110,6 @@ def create_wsgi_request(event_info,
             if path.startswith(script_name):
                 path = path[len(script_name):]
 
-        if query:
-            query_string = urlencode(query, True)
-        else:
-            query_string = ""
-
         x_forwarded_for = headers.get('X-Forwarded-For', '')
         if ',' in x_forwarded_for:
             # The last one is the cloudfront proxy ip. The second to last is the real client ip.
@@ -109,13 +119,12 @@ def create_wsgi_request(event_info,
             remote_addr = '127.0.0.1'
 
         environ = {
-            'PATH_INFO': get_wsgi_string(path) if should_transform_to_iso_8859_1 else path,
-            'QUERY_STRING': get_wsgi_string(query_string) if should_transform_to_iso_8859_1 else query_string,
+            'PATH_INFO': get_wsgi_string(path),
+            'QUERY_STRING': get_wsgi_string(query_string),
             'REMOTE_ADDR': remote_addr,
             'REQUEST_METHOD': method,
             'SCRIPT_NAME':
-                get_wsgi_string(str(script_name)) if should_transform_to_iso_8859_1 else str(script_name)
-                if script_name else '',
+                get_wsgi_string(str(script_name)) if script_name else '',
             'SERVER_NAME': str(server_name),
             'SERVER_PORT': headers.get('X-Forwarded-Port', '80'),
             'SERVER_PROTOCOL': str('HTTP/1.1'),
@@ -192,4 +201,6 @@ def get_wsgi_string(string, encoding='utf-8'):
     """
     Returns wsgi-compatible string
     """
-    return string.encode(encoding).decode('iso-8859-1')
+    # GeoThings: https://github.com/Miserlou/Zappa/pull/1814
+    return string if sys.version_info[0] < 3 else \
+        string.encode(encoding).decode('iso-8859-1')

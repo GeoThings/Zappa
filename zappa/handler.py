@@ -25,13 +25,14 @@ from os import environ
 try:
     from zappa.middleware import ZappaWSGIMiddleware
     from zappa.wsgi import create_wsgi_request, common_log
-    from zappa.utilities import parse_s3_url
-    from zappa.async import task
+    from zappa.utilities import merge_headers, parse_s3_url
+    from zappa.asynchronous import task
 except ImportError as e:  # pragma: no cover
     from .middleware import ZappaWSGIMiddleware
     from .wsgi import create_wsgi_request, common_log
-    from .utilities import parse_s3_url
-    from .async import task
+    from .utilities import merge_headers, parse_s3_url
+    from .asynchronous import task
+
 
 # Set up logging
 logging.basicConfig()
@@ -106,7 +107,8 @@ class LambdaHandler(object):
             if project_archive_path:
                 self.load_remote_project_archive(project_archive_path)
 
-            # Load compliled library to the PythonPath
+
+            # Load compiled library to the PythonPath
             # checks if we are the slim_handler since this is not needed otherwise
             # https://github.com/Miserlou/Zappa/issues/776
             is_slim_handler = getattr(self.settings, 'SLIM_HANDLER', False)
@@ -425,7 +427,7 @@ class LambdaHandler(object):
             management.call_command(*event['manage'].split(' '))
             return {}
 
-        # This is an AWS-event triggered invokation.
+        # This is an AWS-event triggered invocation.
         elif event.get('Records', None):
 
             records = event.get('Records')
@@ -484,7 +486,7 @@ class LambdaHandler(object):
             if event.get('httpMethod', None):
                 script_name = ''
                 is_elb_context = False
-                headers = event.get('headers')
+                headers = merge_headers(event)
                 if event.get('requestContext', None) and event['requestContext'].get('elb', None):
                     # Related: https://github.com/Miserlou/Zappa/issues/1715
                     # inputs/outputs for lambda loadbalancer
@@ -544,53 +546,54 @@ class LambdaHandler(object):
                     xray_recorder.end_subsegment()
 
                 # Execute the application
-                response = Response.from_app(self.wsgi_app, environ)
+                with Response.from_app(self.wsgi_app, environ) as response:
+                    # GeoThings: XRay
+                    if os.environ.get('AWS_EXECUTION_ENV', '').startswith('AWS_Lambda_'):
+                        xray_recorder.begin_subsegment("post_handle")
 
-                if os.environ.get('AWS_EXECUTION_ENV', '').startswith('AWS_Lambda_'):
-                    xray_recorder.begin_subsegment("post_handle")
+                    # This is the object we're going to return.
+                    # Pack the WSGI response into our special dictionary.
+                    zappa_returndict = dict()
 
-                # This is the object we're going to return.
-                # Pack the WSGI response into our special dictionary.
-                zappa_returndict = dict()
+                    # Issue #1715: ALB support. ALB responses must always include
+                    # base64 encoding and status description
+                    if is_elb_context:
+                        zappa_returndict.setdefault('isBase64Encoded', False)
+                        zappa_returndict.setdefault('statusDescription', response.status)
 
-                # Issue #1715: ALB support. ALB responses must always include
-                # base64 encoding and status description
-                if is_elb_context:
-                    zappa_returndict.setdefault('isBase64Encoded', False)
-                    zappa_returndict.setdefault('statusDescription', response.status)
-
-                if response.data:
-                    if settings.BINARY_SUPPORT:
-                        if not response.mimetype.startswith("text/") \
-                            or response.mimetype != "application/json":
-                                zappa_returndict['body'] = base64.b64encode(response.data).decode('utf-8')
-                                zappa_returndict["isBase64Encoded"] = True
+                    if response.data:
+                        if settings.BINARY_SUPPORT:
+                            if not response.mimetype.startswith("text/") \
+                                or response.mimetype != "application/json":
+                                    zappa_returndict['body'] = base64.b64encode(response.data).decode('utf-8')
+                                    zappa_returndict["isBase64Encoded"] = True
+                            else:
+                                zappa_returndict['body'] = response.data
                         else:
-                            zappa_returndict['body'] = response.data
-                    else:
-                        zappa_returndict['body'] = response.get_data(as_text=True)
+                            zappa_returndict['body'] = response.get_data(as_text=True)
 
-                zappa_returndict['statusCode'] = response.status_code
-                zappa_returndict['headers'] = {}
-                for key, value in response.headers:
-                    zappa_returndict['headers'][key] = value
+                    zappa_returndict['statusCode'] = response.status_code
+                    if 'headers' in event:
+                        zappa_returndict['headers'] = {}
+                        for key, value in response.headers:
+                            zappa_returndict['headers'][key] = value
+                    if 'multiValueHeaders' in event:
+                        zappa_returndict['multiValueHeaders'] = {}
+                        for key, value in response.headers:
+                            zappa_returndict['multiValueHeaders'][key] = response.headers.getlist(key)
 
-                zappa_returndict['multiValueHeaders'] = {}
-                for key, value in response.headers:
-                    zappa_returndict['multiValueHeaders'][key] = [value]
+                    # Calculate the total response time,
+                    # and log it in the Common Log format.
+                    time_end = datetime.datetime.now()
+                    delta = time_end - time_start
+                    response_time_ms = delta.total_seconds() * 1000
+                    response.content = response.data
+                    common_log(environ, response, response_time=response_time_ms)
 
-                # Calculate the total response time,
-                # and log it in the Common Log format.
-                time_end = datetime.datetime.now()
-                delta = time_end - time_start
-                response_time_ms = delta.total_seconds() * 1000
-                response.content = response.data
-                common_log(environ, response, response_time=response_time_ms)
-
-                if os.environ.get('AWS_EXECUTION_ENV', '').startswith('AWS_Lambda_'):
-                    xray_recorder.end_subsegment()
-
-                return zappa_returndict
+                    # GeoThings: XRay
+                    if os.environ.get('AWS_EXECUTION_ENV', '').startswith('AWS_Lambda_'):
+                        xray_recorder.end_subsegment()
+                    return zappa_returndict
         except Exception as e:  # pragma: no cover
             # Print statements are visible in the logs either way
             print(e)
