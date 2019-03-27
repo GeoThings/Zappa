@@ -90,7 +90,6 @@ class TestZappa(unittest.TestCase):
                 'AWS_REGION': 'us-east-1'
             }
             with mock.patch.dict(os.environ, options):
-                pass
                 self.assertEqual(async_me("qux"),
                                  "Running async!")
 
