@@ -31,7 +31,7 @@ except ImportError as e:  # pragma: no cover
     from .middleware import ZappaWSGIMiddleware
     from .wsgi import create_wsgi_request, common_log
     from .utilities import parse_s3_url
-    from .async import task
+    from .asynchronous import task
 
 # Set up logging
 logging.basicConfig()
