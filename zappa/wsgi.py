@@ -109,13 +109,11 @@ def create_wsgi_request(event_info,
             remote_addr = '127.0.0.1'
 
         environ = {
-            'PATH_INFO': get_wsgi_string(path) if should_transform_to_iso_8859_1 else path,
-            'QUERY_STRING': get_wsgi_string(query_string) if should_transform_to_iso_8859_1 else query_string,
+            'PATH_INFO': get_wsgi_string(path),
+            'QUERY_STRING': get_wsgi_string(query_string),
             'REMOTE_ADDR': remote_addr,
             'REQUEST_METHOD': method,
-            'SCRIPT_NAME':
-                get_wsgi_string(str(script_name)) if should_transform_to_iso_8859_1 else str(script_name)
-                if script_name else '',
+            'SCRIPT_NAME': get_wsgi_string(str(script_name)) if script_name else '',
             'SERVER_NAME': str(server_name),
             'SERVER_PORT': headers.get('X-Forwarded-Port', '80'),
             'SERVER_PROTOCOL': str('HTTP/1.1'),
@@ -192,4 +190,4 @@ def get_wsgi_string(string, encoding='utf-8'):
     """
     Returns wsgi-compatible string
     """
-    return string.encode(encoding).decode('iso-8859-1')
+    return string if sys.version_info[0] < 3 else string.encode(encoding).decode('iso-8859-1')
