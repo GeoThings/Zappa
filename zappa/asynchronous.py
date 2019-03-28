@@ -432,7 +432,7 @@ def task(*args, **kwargs):
                                                      capture_response=capture_response).send(task_path, args, kwargs)
                 return send_result
             else:
-                return Thread(target=func, args, kwargs).start()
+                return Thread(target=func, args=args, kwargs=kwargs).start()
 
         update_wrapper(_run_async, func)
 
