@@ -47,7 +47,7 @@ from datetime import datetime, timedelta
 from .core import Zappa, logger, API_GATEWAY_REGIONS
 from .utilities import (check_new_version_available, detect_django_settings,
                   detect_flask_apps, parse_s3_url, human_size,
-                  validate_name, InvalidAwsLambdaName, get_venv_from_python_version
+                  validate_name, InvalidAwsLambdaName, get_venv_from_python_version,
                   get_runtime_from_python_version, string_to_timestamp, is_valid_bucket_name)
 
 
