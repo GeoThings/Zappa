@@ -180,9 +180,9 @@ def get_runtime_from_python_version():
         return 'python2.7'
     else:
         if sys.version_info[1] <= 6:
-	            return 'python3.6'
-	        else:
-	            return 'python3.7'
+            return 'python3.6'
+        else:
+            return 'python3.7'
 
 ##
 # Async Tasks
