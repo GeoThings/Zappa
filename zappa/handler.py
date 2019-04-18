@@ -372,9 +372,7 @@ class LambdaHandler(object):
             for (key, value) in (event.get('multiValueQueryStringParameters') or {}).items():
                 target[unquote_plus(key)] = list([unquote_plus(query_param_value) for query_param_value in value])
             event['multiValueQueryStringParameters'] = target
-
             event['queryStringParameters'] = dict([(key, value[-1]) for (key, value) in (event.get('multiValueQueryStringParameters') or {}).items()])
-            print(event['queryStringParameters'])
 
         # If in DEBUG mode, log all raw incoming events.
         if settings.DEBUG:
