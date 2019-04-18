@@ -126,6 +126,9 @@ def create_wsgi_request(event_info,
             'wsgi.run_once': False,
         }
 
+        if "report" in path:
+            print(environ)
+
         # Input processing
         if method in ["POST", "PUT", "PATCH", "DELETE"]:
             if 'Content-Type' in headers:
