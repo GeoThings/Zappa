@@ -33,6 +33,11 @@ except ImportError as e:  # pragma: no cover
     from .utilities import parse_s3_url
     from .asynchronous import task
 
+if sys.version_info[0] < 3:
+    from urllib import unquote_plus
+else:
+    from urllib.parse import unquote_plus
+
 # Set up logging
 logging.basicConfig()
 logger = logging.getLogger()
@@ -361,6 +366,13 @@ class LambdaHandler(object):
             event['headers'] = dict([(key, value[-1]) for (key, value) in (event.get('multiValueHeaders') or {}).items()])
 
         if 'multiValueQueryStringParameters' in event:
+            # do more investigation to why not ALB query parameters are url-decoded and where does this url decoding occurs
+            # for now urlcoded multi-query params here
+            target = {}
+            for (key, value) in (event.get('multiValueQueryStringParameters') or {}).items():
+                target[unquote_plus(key)] = list([unquote_plus(query_param_value) for query_param_value in value])
+            event['multiValueQueryStringParameters'] = target
+
             event['queryStringParameters'] = dict([(key, value[-1]) for (key, value) in (event.get('multiValueQueryStringParameters') or {}).items()])
             print(event['queryStringParameters'])
 
