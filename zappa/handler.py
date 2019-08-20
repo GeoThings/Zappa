@@ -438,6 +438,7 @@ class LambdaHandler(object):
             # Read the log for now. :[]
             # XXX: sys.argv patch is needed to get django-deprecate-fields working.
             with patch.object(sys, 'argv', ['./manage.py'] + event['manage'].split(' ')):
+                logger.error(sys.argv)
                 management.call_command(*event['manage'].split(' '))
             return {}
 
