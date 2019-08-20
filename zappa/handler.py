@@ -426,6 +426,9 @@ class LambdaHandler(object):
             except ImportError as e:  # pragma: no cover
                 from django_zappa_app import get_django_wsgi
 
+            # XXX: It needs Python 3.4+
+            from unittest.mock import patch
+
             # Get the Django WSGI app from our extension
             # We don't actually need the function,
             # but we do need to do all of the required setup for it.
@@ -433,7 +436,9 @@ class LambdaHandler(object):
 
             # Couldn't figure out how to get the value into stdout with StringIO..
             # Read the log for now. :[]
-            management.call_command(*event['manage'].split(' '))
+            # XXX: sys.argv patch is needed to get django-deprecate-fields working.
+            with patch.object(sys, 'argv', ['./manage.py'] + event['manage'].split(' ')):
+                management.call_command(*event['manage'].split(' '))
             return {}
 
         # This is an AWS-event triggered invokation.
