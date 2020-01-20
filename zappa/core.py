@@ -1035,7 +1035,7 @@ class Zappa(object):
                                 aws_environment_variables=None,
                                 aws_kms_key_arn=None,
                                 xray_tracing=False,
-                                local_zip=None
+                                local_zip=None,
                                 layers=None
                             ):
         """
